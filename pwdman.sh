@@ -41,7 +41,7 @@ function pwdman_decrypt_database() {
     fi
     database="$1"
     password="$2"
-    if !     result=$(printf "%s\n" "$password" | gpg --armor --batch --no-symkey-cache --decrypt --passphrase-fd 0 "$database" 2>/dev/null); then
+    if ! result=$(printf "%s\\n" "$password" | gpg --armor --batch --no-symkey-cache --decrypt --passphrase-fd 0 "$database" 2>/dev/null); then
         pwdman_exit "Database decryption error."
     fi
     BUFFER=$(printf "%s" "$result" | tail -n +2)
@@ -255,11 +255,11 @@ function pwdman_list() {
     if [[ "$data" == "" ]]; then
         pwdman_exit "Database is empty."
     fi
-    printf "Database entries:\nUsername\tPassword\n"
+    printf "Database entries:\\nUsername\\tPassword\\n"
     while IFS= read -r line; do
         username=$(printf "%s" "$line" | cut -d "," -f1 | base64 --decode)
         password=$(printf "%s" "$line" | cut -d "," -f2 | base64 --decode)
-        printf "%s\t%s\n" "$username" "$password"
+        printf "%s\\t%s\\n" "$username" "$password"
     done <<< "$data"
 }
 
