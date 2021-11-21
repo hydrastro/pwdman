@@ -19,6 +19,9 @@ function pwdman_encrypt_database() {
         pwdman_exit "Error: missing argument(s) for ${FUNCNAME[0]}"
     fi
     database="$1"
+    if [[ ! -f "$database" ]]; then
+        pwdman_exit "Error: database not found."
+    fi
     password="$2"
     data="$3"
     data=$(printf "%s,%s" "Username" "Password")$'\n'$(printf "%s" "$data")
@@ -40,6 +43,9 @@ function pwdman_decrypt_database() {
         pwdman_exit "Error: missing argument(s) for ${FUNCNAME[0]}"
     fi
     database="$1"
+    if [[ ! -f "$database" ]]; then
+        pwdman_exit "Error: database not found."
+    fi
     password="$2"
     if ! result=$(printf "%s\\n" "$password" | gpg --armor --batch --no-symkey-cache --decrypt --passphrase-fd 0 "$database" 2>/dev/null); then
         pwdman_exit "Database decryption error."
@@ -277,12 +283,15 @@ function pwdman_list() {
     if [[ "$data" == "" ]]; then
         pwdman_exit "Database is empty."
     fi
-    printf "Database entries:\\nUsername\\tPassword\\n"
+    decoded_data="Username,Password"$'\n'
+    printf "Database entries:\\n"
     while IFS= read -r line; do
         username=$(printf "%s" "$line" | cut -d "," -f1 | base64 --decode)
         password=$(printf "%s" "$line" | cut -d "," -f2 | base64 --decode)
-        printf "%s\\t%s\\n" "$username" "$password"
+        decoded_data+=$(printf "%s,%s" "$username" "$password")
+        decoded_data+=$'\n'
     done <<< "$data"
+    printf "%s" "$decoded_data" | column -t -s ","
 }
 
 #
@@ -311,7 +320,8 @@ function pwdman_get_random_password() {
     if [[ $# -gt 1 ]]; then
         alphabet="$2"
     else
-        alphabet='abcdefghijklmonpqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*()-=_+`~[]\{}|;'\'':",./<>?'
+        # Removed comma
+        alphabet='abcdefghijklmonpqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*()-=_+`~[]\{}|;'\'':"./<>?'
     fi
     PASSWORD=""
     for _ in $(seq 1 "$length"); do
@@ -362,12 +372,27 @@ function pwdman_get_input() {
 }
 
 #
+# Interactive Mode
+#
+# $1 [ Database ]
+#
+function pwdman_interactive() {
+    while [[ -z "${action}" ]] ; do
+        read -n 1 -p "pwdman-interactive>" action
+        printf "\n"
+    done
+    # Switch for action
+    # Get stuff
+    # Call functions
+    pwdman_exit "Invalid option. Press h for help."
+}
+
+#
 # Password Manager Version
 #
 function pwdman_version() {
     echo "Password Manager version $SCRIPT_VERSION"
 }
-
 
 #
 # Password Manager Help
