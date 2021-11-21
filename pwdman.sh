@@ -169,7 +169,7 @@ function pwdman_read_password() {
     timeout="$CLIPBOARD_TIMEOUT"
     shift
     while [[ $timeout -gt 0 ]]; do
-        printf "\rPassword on clipboard! Clearing clipboard in %.d" $((timeout--))
+        printf "\\rPassword on clipboard! Clearing clipboard in %.d" $((timeout--))
         sleep 1
     done
     printf "%s" "" | xclip
