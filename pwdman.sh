@@ -168,24 +168,20 @@ function pwdman_update_password() {
         echo "Warning: multiple entries matching in the database."
         pwdman_ask_continue
     fi
-
-#
-#
-#
-#              SUBSTITUTION NEEDED
-#
-#
-#
-    result=$(printf "%s" "$data" | cut -d "," -f1 | grep -n "$username" | cut -d ":" -f1)
-    while IFS= read -r line_number; do
+    while :
+    do
+        line_number=$(printf "%s" "$data" | cut -d "," -f1 | grep -n "$username" | cut -d ":" -f1 | head -n 1)
+        if [[ "$line_number" == "" ]]; then
+            break;
+        fi
         data=$(printf "%s" "$data" | sed "${line_number}d")
-    done <<< "$result"
-
-
+    done
     pwdman_get_input_password "New password:"
     PASSWORD=$(printf "%s" "$PASSWORD" | base64)
-    data+=$'\n'$(printf "%s,%s" "$username" "$PASSWORD")
-
+    if [[ "$data" != "" ]]; then
+        data+=$'\n'
+    fi
+    data+=$(printf "%s,%s" "$username" "$PASSWORD")
     pwdman_encrypt_database "$database" "$database_password" "$data"
     echo "Entry successfully updated."
 }
@@ -246,8 +242,7 @@ function pwdman_list() {
     database_password="$PASSWORD"
     pwdman_decrypt_database "$database" "$database_password"
     data=$(printf "%s" "$BUFFER")
-    line_count=$(printf "%s" "$BUFFER" | wc -l)
-    if [[ "$line_count" == 0 ]]; then
+    if [[ "$data" == "" ]]; then
         pwdman_exit "Database is empty."
     fi
     printf "Database entries:\nUsername\tPassword\n"
