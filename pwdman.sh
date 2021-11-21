@@ -68,7 +68,7 @@ function pwdman_write_password() {
         pwdman_exit "Error: missing argument(s) for ${FUNCNAME[0]}"
     fi
     username="$1"
-    username=$(printf "%s" "$username" | base64)
+    username=$(printf "%s" "$username" | base64 -w 0)
     if [[ $# -gt 1 ]]; then
         database="$2"
     else
@@ -78,13 +78,17 @@ function pwdman_write_password() {
     database_password="$PASSWORD"
     pwdman_decrypt_database "$database" "$database_password"
     data=$(printf "%s" "$BUFFER")
+    # TODO: better checking
     count=$(pwdman_count_entries "$username" "$BUFFER")
     if [[ $count -ge 1 ]]; then
         echo "Warning: there's already a matching entry in the database."
         pwdman_ask_continue
     fi
-    pwdman_get_input_password "Entry password:"
-    PASSWORD=$(printf "%s" "$PASSWORD" | base64)
+    pwdman_get_input_password "Entry password (press enter for generating a random one):"
+    if [[ "$PASSWORD" == "" ]]; then
+        pwdman_get_random_password
+    fi
+    PASSWORD=$(printf "%s" "$PASSWORD" | base64 -w 0)
     if [[ "$data" != "" ]]; then
         data+=$'\n'
     fi
@@ -118,7 +122,7 @@ function pwdman_read_password() {
         pwdman_exit "Error: missing argument(s) for ${FUNCNAME[0]}"
     fi
     username="$1"
-    username=$(printf "%s" "$username" | base64)
+    username=$(printf "%s" "$username" | base64 -w 0)
     if [[ $# -gt 1 ]]; then
         database="$2"
     else
@@ -150,7 +154,7 @@ function pwdman_update_password() {
         pwdman_exit "Error: missing argument(s) for ${FUNCNAME[0]}"
     fi
     username="$1"
-    username=$(printf "%s" "$username" | base64)
+    username=$(printf "%s" "$username" | base64 -w 0)
     if [[ $# -gt 1 ]]; then
         database="$2"
     else
@@ -176,8 +180,11 @@ function pwdman_update_password() {
         fi
         data=$(printf "%s" "$data" | sed "${line_number}d")
     done
-    pwdman_get_input_password "New password:"
-    PASSWORD=$(printf "%s" "$PASSWORD" | base64)
+    pwdman_get_input_password "New password (press enter for generating a new one):"
+    if [[ "$PASSWORD" == "" ]]; then
+        pwdman_get_random_password
+    fi
+    PASSWORD=$(printf "%s" "$PASSWORD" | base64 -w 0)
     if [[ "$data" != "" ]]; then
         data+=$'\n'
     fi
@@ -197,7 +204,7 @@ function pwdman_delete_password() {
         pwdman_exit "Error: missing argument(s) for ${FUNCNAME[0]}"
     fi
     username="$1"
-    username=$(printf "%s" "$username" | base64)
+    username=$(printf "%s" "$username" | base64 -w 0)
     if [[ $# -gt 1 ]]; then
         database="$2"
     else
@@ -269,28 +276,18 @@ function pwdman_ask_continue() {
 }
 
 #
-# Set Random Password
-#
-# $1 Username
-# $2 Length
-# $3 [ Alphabet ]
-# $4 [ Database ]
-#
-function pwdman_set_random_password() {
-    if [[ $# -lt 2 ]]; then
-        pwdman_exit "Error: missing argument(s) for ${FUNCNAME[0]}"
-    fi
-}
-
-#
 # Get Random Password
 #
 # $1 [ Length ]
 # $2 [ Alphabet ]
 #
 function pwdman_get_random_password() {
-    length="${1:-80}"
-    alphabet="${2:-abcdefghijklmonpqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*()_+\{\}\\:\";\',./<>?}"
+    length="${1:-128}"
+    if [[ $# -gt 1 ]]; then
+        alphabet="$2"
+    else
+        alphabet='abcdefghijklmonpqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*()-=_+`~[]\{}|;'\'':",./<>?'
+    fi
     PASSWORD=""
     for i in $(seq 1 $length); do
         char=${alphabet:$RANDOM % ${#alphabet}:1}
@@ -365,7 +362,6 @@ Options:
   -d | (--)delete <arg>   Deletes a password from the database.
   -l | (--)list <arg>     Lists all passwords saved in the database.
   -b | (--)backup <arg>   Makes a backup dump of the database.
-  -g | (--)random <arg>   Generates a random password of a given lenght for a new entry.
   -e | (--)encrypt <arg>  Encrypts a database file.
   -x | (--)decrypt <arg>  Decrypts a database file.
 EOF
@@ -397,9 +393,9 @@ function pwdman_initialize() {
     else
         database="$INPUT"
     fi
-    pwdman_get_input_password "Set the database password:"
-    echo "$PASSWORD"
+    pwdman_get_input_password "Database password:"
     pwdman_encrypt_database "$database" "$PASSWORD"
+    echo "Database set up successful."
     exit 0
 }
 
@@ -427,7 +423,8 @@ function pwdman_main() {
             ;;
         "-r" | "--read" | "read")
             pwdman_read_password "${@:2}"
-            ;;        "-w" | "--write" | "write")
+            ;;
+        "-w" | "--write" | "write")
             pwdman_write_password "${@:2}"
             ;;
         "-u" | "--update" | "update")
@@ -441,9 +438,6 @@ function pwdman_main() {
             ;;
         "-b" | "--backup" | "backup")
             pwdman_backup_database "${@:2}"
-            ;;
-        "-g" | "--random" | "random")
-            pwdman_set_random_password "${@:2}" ## TODO setup?
             ;;
         *)
             echo "Invalid argument(s). Type --help for help."
