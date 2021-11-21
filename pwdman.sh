@@ -19,9 +19,6 @@ function pwdman_encrypt_database() {
         pwdman_exit "Error: missing argument(s) for ${FUNCNAME[0]}"
     fi
     database="$1"
-    if [[ ! -f "$database" ]]; then
-        pwdman_exit "Error: database not found."
-    fi
     password="$2"
     data="$3"
     data=$(printf "%s,%s" "Username" "Password")$'\n'$(printf "%s" "$data")
@@ -70,17 +67,18 @@ function pwdman_write_password() {
     else
         database="$DEFAULT_DATABASE"
     fi
-    pwdman_get_input_password "Database password:"
+    pwdman_get_input_password "Database password: "
     database_password="$PASSWORD"
     pwdman_decrypt_database "$database" "$database_password"
     data=$(printf "%s" "$BUFFER")
-    if ! pwdman_check_reverse_entries "$username" "$BUFFER"; then
+    count=$(pwdman_count_entries "$username" "$BUFFER")
+    if ! pwdman_check_reverse_entries "$username" "$BUFFER" || [[ $count -gt 0 ]]; then
         echo "Warning: there's already a matching entry in the database."
         pwdman_ask_continue
     fi
-    pwdman_get_input_password "Entry password [random]:"
+    pwdman_get_input_password "Entry password [random]: "
     if [[ "$PASSWORD" == "" ]]; then
-        pwdman_get_input "Random password length [128]:"
+        pwdman_get_input "Random password length [128]: "
         if [[ -z "$INPUT" ]]; then
             length=128
         else
@@ -107,14 +105,14 @@ function pwdman_check_reverse_entries() {
     if [[ $# -lt 2 ]]; then
         pwdman_exit "Error: missing argument(s) for ${FUNCNAME[0]}"
     fi
-    username="$1"
+    decoded_username="$1"
     database_buffer=$(printf "%s" "$2" | cut -d "," -f1)
     if [[ "$database_buffer" == "" ]]; then
         return 0
     fi
     while IFS= read -r line; do
         decoded_line=$(printf "%s" "$line" | base64 --decode)
-        if printf "%s" "$username" | grep "$decoded_line"; then
+        if printf "%s" "$decoded_username" | grep -q "$decoded_line"; then
             return 1
         fi
     done <<< "$database_buffer"
@@ -131,9 +129,13 @@ function pwdman_count_entries() {
     if [[ $# -lt 2 ]]; then
         pwdman_exit "Error: missing argument(s) for ${FUNCNAME[0]}"
     fi
-    username_encoded="$1"
-    database_buffer="$2"
-    printf "%s" "$database_buffer" | grep -c "$username_encoded"
+    decoded_username="$1"
+    database_buffer=$(printf "%s" "$2" | cut -d "," -f1)
+    decoded_database=""
+    while IFS= read -r line; do
+        decoded_database=$(printf "%s" "$line" | base64 --decode)$'\n'
+    done <<< "$database_buffer"
+    printf "%s" "$decoded_database" | grep -c "$decoded_username"
 }
 
 #
@@ -153,7 +155,7 @@ function pwdman_read_password() {
     else
         database="$DEFAULT_DATABASE"
     fi
-    pwdman_get_input_password "Database password:"
+    pwdman_get_input_password "Database password: "
     database_password="$PASSWORD"
     pwdman_decrypt_database "$database" "$database_password"
     data=$(printf "%s" "$BUFFER")
@@ -193,7 +195,7 @@ function pwdman_update_password() {
     else
         database="$DEFAULT_DATABASE"
     fi
-    pwdman_get_input_password "Database password:"
+    pwdman_get_input_password "Database password: "
     database_password="$PASSWORD"
     pwdman_decrypt_database "$database" "$database_password"
     data=$(printf "%s" "$BUFFER")
@@ -213,9 +215,9 @@ function pwdman_update_password() {
         fi
         data=$(printf "%s" "$data" | sed "${line_number}d")
     done
-    pwdman_get_input_password "New password [random]:"
+    pwdman_get_input_password "New password [random]: "
     if [[ "$PASSWORD" == "" ]]; then
-        pwdman_get_input "Random password length [128]:"
+        pwdman_get_input "Random password length [128]: "
         if [[ -z "$INPUT" ]]; then
             length=128
         else
@@ -249,7 +251,7 @@ function pwdman_delete_password() {
     else
         database="$DEFAULT_DATABASE"
     fi
-    pwdman_get_input_password "Database password:"
+    pwdman_get_input_password "Database password: "
     database_password="$PASSWORD"
     pwdman_decrypt_database "$database" "$database_password"
     data=$(printf "%s" "$BUFFER")
@@ -284,7 +286,7 @@ function pwdman_list() {
     else
         database="$DEFAULT_DATABASE"
     fi
-    pwdman_get_input_password "Database password:"
+    pwdman_get_input_password "Database password: "
     database_password="$PASSWORD"
     pwdman_decrypt_database "$database" "$database_password"
     data=$(printf "%s" "$BUFFER")
@@ -315,7 +317,7 @@ function pwdman_backup_database() {
     else
         database="$DEFAULT_DATABASE"
     fi
-    pwdman_get_input_password "Database password:"
+    pwdman_get_input_password "Database password: "
     database_password="$PASSWORD"
     pwdman_decrypt_database "$database" "$database_password"
     data=$(printf "%s" "$BUFFER")
@@ -388,7 +390,7 @@ function pwdman_get_input_password() {
 #
 function pwdman_get_input() {
     INPUT=""
-    prompt="${1:-Input:}"
+    prompt="${1:-Input: }"
     while IFS= read -p "${prompt}" -r -s -n 1 char ; do
         if [[ ${char} == $'\0' ]] ; then
             break
@@ -417,14 +419,51 @@ function pwdman_get_input() {
 # $1 [ Database ]
 #
 function pwdman_interactive() {
+    if [[ $# -gt 0 ]]; then
+        database="$1"
+    else
+        database="$DEFAULT_DATABASE"
+    fi
     while [[ -z "${action}" ]] ; do
-        read -r -n 1 -p "pwdman-interactive>" action
+        # pwdman_version
+        # echo "Interactive Mode"
+        read -r -n 1 -p "> " action
         printf "\\n"
     done
-    # Switch for action
-    # Get stuff
-    # Call functions
-    pwdman_exit "Invalid option. Press h for help."
+    case "$action" in
+        "h")
+            pwdman_help
+            ;;
+        "v")
+            pwdman_version
+            ;;
+        "r")
+            pwdman_get_input "Username: "
+            pwdman_read_password "$INPUT" "$database"
+            ;;
+        "w")
+            pwdman_get_input "Username: "
+            pwdman_write_password "$INPUT" "$database"
+            ;;
+        "u")
+            pwdman_get_input "Username: "
+            pwdman_update_password "$INPUT" "$database"
+            ;;
+        "d")
+            pwdman_get_input "Username: "
+            pwdman_delete_password "$INPUT" "$database"
+            ;;
+        "l")
+            pwdman_list "$database"
+            ;;
+        "b")
+            pwdman_get_input "Backup filename: "
+            pwdman_backup_database "$INPUT" "$database"
+            ;;
+        *)
+            pwdman_exit "Invalid option. Press h for help."
+    esac
+    exit 0
 }
 
 #
@@ -452,8 +491,6 @@ Options:
   -d | (--)delete <arg>   Deletes a password from the database.
   -l | (--)list <arg>     Lists all passwords saved in the database.
   -b | (--)backup <arg>   Makes a backup dump of the database.
-  -e | (--)encrypt <arg>  Encrypts a database file.
-  -x | (--)decrypt <arg>  Decrypts a database file.
 EOF
 }
 
@@ -477,13 +514,13 @@ function pwdman_exit() {
 function pwdman_initialize() {
     pwdman_version
     echo "Welcome! Set up pwdman."
-    pwdman_get_input "Database name [$DEFAULT_DATABASE]:"
+    pwdman_get_input "Database name [$DEFAULT_DATABASE]: "
     if [[ -z "$INPUT" ]]; then
         database="$DEFAULT_DATABASE"
     else
         database="$INPUT"
     fi
-    pwdman_get_input_password "Database password:"
+    pwdman_get_input_password "Database password: "
     pwdman_encrypt_database "$database" "$PASSWORD"
     echo "Database set up successful."
     exit 0
@@ -509,7 +546,7 @@ function pwdman_main() {
             pwdman_version
             ;;
         "-i" | "--interactive" | "interactive")
-            pwdman_interactive
+            pwdman_interactive "${@:2}"
             ;;
         "-r" | "--read" | "read")
             pwdman_read_password "${@:2}"
