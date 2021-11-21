@@ -59,7 +59,6 @@ function pwdman_write_password() {
         pwdman_exit "Error: missing argument(s) for ${FUNCNAME[0]}"
     fi
     username="$1"
-    username=$(printf "%s" "$username" | base64 -w 0)
     if [[ $# -gt 1 ]]; then
         database="$2"
     else
@@ -69,9 +68,7 @@ function pwdman_write_password() {
     database_password="$PASSWORD"
     pwdman_decrypt_database "$database" "$database_password"
     data=$(printf "%s" "$BUFFER")
-    # TODO: better checking
-    count=$(pwdman_count_entries "$username" "$BUFFER")
-    if [[ $count -ge 1 ]]; then
+    if ! pwdman_check_reverse_entries "$username" "$BUFFER"; then
         echo "Warning: there's already a matching entry in the database."
         pwdman_ask_continue
     fi
@@ -89,8 +86,33 @@ function pwdman_write_password() {
     if [[ "$data" != "" ]]; then
         data+=$'\n'
     fi
+    username=$(printf "%s" "$username" | base64 -w 0)
     data+=$(printf "%s,%s" "$username" "$PASSWORD")
     pwdman_encrypt_database "$database" "$database_password" "$data"
+}
+
+#
+# Check DB Reverse Matching Entries
+#
+# $1 Username
+# $2 Database Buffer
+#
+function pwdman_check_reverse_entries() {
+    if [[ $# -lt 2 ]]; then
+        pwdman_exit "Error: missing argument(s) for ${FUNCNAME[0]}"
+    fi
+    username="$1"
+    database_buffer=$(printf "%s" "$2" | cut -d "," -f1)
+    if [[ "$database_buffer" == "" ]]; then
+        return 0
+    fi
+    while IFS= read -r line; do
+        decoded_line=$(printf "%s" "$line" | base64 --decode)
+        if printf "%s" "$username" | grep "$decoded_line"; then
+            return 1
+        fi
+    done <<< "$database_buffer"
+    return 0
 }
 
 #
@@ -103,9 +125,9 @@ function pwdman_count_entries() {
     if [[ $# -lt 2 ]]; then
         pwdman_exit "Error: missing argument(s) for ${FUNCNAME[0]}"
     fi
-    username="$1"
+    username_encoded=$(printf "%s" "$1" | base64 -w 0)
     database_buffer="$2"
-    printf "%s" "$database_buffer" | grep -c "$username"
+    printf "%s" "$database_buffer" | grep -c "$username_encoded"
 }
 
 #
