@@ -2,7 +2,7 @@
 
 : "${DEFAULT_DATABASE:=pwdman.db}"
 
-SCRIPT_VERSION="0.3"
+SCRIPT_VERSION="0.4"
 BUFFER=""
 
 #
@@ -379,7 +379,7 @@ function pwdman_get_input() {
 function pwdman_interactive() {
     while [[ -z "${action}" ]] ; do
         read -n 1 -p "pwdman-interactive>" action
-        printf "\n"
+        printf "\\n"
     done
     # Switch for action
     # Get stuff
