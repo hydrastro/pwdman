@@ -149,7 +149,6 @@ function pwdman_read_password() {
         pwdman_exit "Error: missing argument(s) for ${FUNCNAME[0]}"
     fi
     username="$1"
-    username=$(printf "%s" "$username" | base64 -w 0)
     if [[ $# -gt 1 ]]; then
         database="$2"
     else
@@ -159,14 +158,22 @@ function pwdman_read_password() {
     database_password="$PASSWORD"
     pwdman_decrypt_database "$database" "$database_password"
     data=$(printf "%s" "$BUFFER")
-    count=$(pwdman_count_entries "$username" "$BUFFER")
+    encoded_usernames=$(printf "%s" "$BUFFER" | cut -d "," -f1)
+    decoded_usernames=""
+    while IFS= read -r line; do
+        decoded_usernames+=$(printf "%s" "$line" | base64 --decode)$'\n'
+    done <<< "$encoded_usernames"
+    result=$(printf "%s" "$decoded_usernames" | grep -n "$username")
+    count=$(printf "%s" "$decoded_usernames" | grep -c "$username")
     if [[ $count -eq 0 ]]; then
         pwdman_exit "Error: username not found in the database."
     fi
     if [[ $count -gt 1 ]]; then
         echo "Warning: multiple entries matching in the database."
     fi
-    password=$(printf "%s" "$data" | grep "$username" |  cut -d "," -f2 | base64 --decode)
+    first_result=$(printf "%s" "$result" | cut -d ":" -f1 | sed -n 1p)
+    password=$(printf "%s" "$BUFFER" | cut -d "," -f2 | sed -n "$first_result"p | base64 --decode)
+    username=$(printf "%s" "$username" | base64 -w 0)
     printf "%s" "$password" | xclip
     timeout="$CLIPBOARD_TIMEOUT"
     shift
