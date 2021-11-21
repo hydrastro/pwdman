@@ -303,6 +303,38 @@ function pwdman_list() {
 }
 
 #
+# $1 File Name
+# $2 [ Database ]
+#
+function pwdman_backup_database() {
+    if [[ $# -lt 1 ]]; then
+        pwdman_exit "Error: missing argument(s) for ${FUNCNAME[0]}"
+    fi
+    if [[ $# -gt 1 ]]; then
+        database="$2"
+    else
+        database="$DEFAULT_DATABASE"
+    fi
+    pwdman_get_input_password "Database password:"
+    database_password="$PASSWORD"
+    pwdman_decrypt_database "$database" "$database_password"
+    data=$(printf "%s" "$BUFFER")
+    if [[ "$data" == "" ]]; then
+        pwdman_exit "Database is empty."
+    fi
+    decoded_data="Username,Password"$'\n'
+    while IFS= read -r line; do
+        username=$(printf "%s" "$line" | cut -d "," -f1 | base64 --decode)
+        password=$(printf "%s" "$line" | cut -d "," -f2 | base64 --decode)
+        decoded_data+=$(printf "%s,%s" "$username" "$password")
+        decoded_data+=$'\n'
+    done <<< "$data"
+    printf "%s" "$decoded_data" > "$1"
+    echo "Database successfully exported."
+    echo "Note: be aware that the export is in plaintext!"
+}
+
+#
 # Continue Prompt
 #
 function pwdman_ask_continue() {
