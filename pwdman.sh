@@ -22,8 +22,7 @@ function pwdman_encrypt_database() {
     password="$2"
     data="$3"
     data=$(printf "%s,%s" "Username" "Password")$'\n'$(printf "%s" "$data")
-    result=$(printf "%s" "$data" | gpg --armor --batch --symmetric --yes --passphrase-fd 3 --no-symkey-cache --output "$database" 3< <(printf "%s" "$password"))
-    if [[ $? -ne 0 ]]; then
+    if ! result=$(printf "%s" "$data" | gpg --armor --batch --symmetric --yes --passphrase-fd 3 --no-symkey-cache --output "$database" 3< <(printf "%s" "$password")); then
         pwdman_exit "Database encryption error."
     fi
 }
@@ -42,8 +41,7 @@ function pwdman_decrypt_database() {
     fi
     database="$1"
     password="$2"
-    result=$(printf "%s\n" "$password" | gpg --armor --batch --no-symkey-cache --decrypt --passphrase-fd 0 "$database" 2>/dev/null)
-    if [[ $? -ne 0 ]]; then
+    if !     result=$(printf "%s\n" "$password" | gpg --armor --batch --no-symkey-cache --decrypt --passphrase-fd 0 "$database" 2>/dev/null); then
         pwdman_exit "Database decryption error."
     fi
     BUFFER=$(printf "%s" "$result" | tail -n +2)
@@ -107,7 +105,7 @@ function pwdman_count_entries() {
     fi
     username="$1"
     database_buffer="$2"
-    printf "$database_buffer" | grep "$username" | wc -l
+    printf "%s" "$database_buffer" | grep -c "$username"
 }
 
 #
@@ -294,7 +292,7 @@ function pwdman_get_random_password() {
         alphabet='abcdefghijklmonpqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*()-=_+`~[]\{}|;'\'':",./<>?'
     fi
     PASSWORD=""
-    for i in $(seq 1 $length); do
+    for _ in $(seq 1 "$length"); do
         char=${alphabet:$RANDOM % ${#alphabet}:1}
         PASSWORD+=$char
     done
