@@ -1,10 +1,10 @@
 #!/bin/bash
 
 : "${DEFAULT_DATABASE:=pwdman.db}"
+: "${CLIPBOARD_TIMEOUT:=30}"
 
 SCRIPT_VERSION="0.4"
 BUFFER=""
-
 #
 # Encrypt Database
 #
@@ -131,7 +131,7 @@ function pwdman_count_entries() {
     if [[ $# -lt 2 ]]; then
         pwdman_exit "Error: missing argument(s) for ${FUNCNAME[0]}"
     fi
-    username_encoded=$(printf "%s" "$1" | base64 -w 0)
+    username_encoded="$1"
     database_buffer="$2"
     printf "%s" "$database_buffer" | grep -c "$username_encoded"
 }
@@ -164,8 +164,16 @@ function pwdman_read_password() {
     if [[ $count -gt 1 ]]; then
         echo "Warning: multiple entries matching in the database."
     fi
-    printf "%s" "$data" | grep "$username" |  cut -d "," -f2 | base64 --decode
-    # TODO: copy to clipboard
+    password=$(printf "%s" "$data" | grep "$username" |  cut -d "," -f2 | base64 --decode)
+    printf "%s" "$password" | xclip
+    timeout="$CLIPBOARD_TIMEOUT"
+    shift
+    while [[ $timeout -gt 0 ]]; do
+        printf "\rPassword on clipboard! Clearing clipboard in %.d" $((timeout--))
+        sleep 1
+    done
+    printf "%s" "" | xclip
+    echo "Done."
 }
 
 #
@@ -378,7 +386,7 @@ function pwdman_get_input() {
 #
 function pwdman_interactive() {
     while [[ -z "${action}" ]] ; do
-        read -n 1 -p "pwdman-interactive>" action
+        read -r -n 1 -p "pwdman-interactive>" action
         printf "\\n"
     done
     # Switch for action
