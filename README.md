@@ -5,12 +5,12 @@ Simple password manager written in bash.
 - [ ] Clipboard copy
 - [ ] Better check for usernames on function password write
 - [ ] ask_continue function feature
-- [ ] Check if database exists function
 - [ ] Code cleanup with shellcheck
 - [ ] Backup function(s)
 - [ ] Better list output ?
 - [ ] Proper README.md
 - [ ] Interactive mode
+- [ ] Optimization (there are a lot of unnecessary assignments)
 - [X] Setup CI workflow
 - [X] Check update function
 - [X] Random functions

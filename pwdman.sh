@@ -28,13 +28,6 @@ function pwdman_encrypt_database() {
     fi
 }
 
-function pwdman_check_database_existance() {
-    if [[ $# -lt 1 ]]; then
-        pwdman_exit "Error: missing argument(s) for ${FUNCNAME[0]}"
-    fi
-    # TODO
-}
-
 #
 # Decrypt Database
 #
@@ -84,9 +77,15 @@ function pwdman_write_password() {
         echo "Warning: there's already a matching entry in the database."
         pwdman_ask_continue
     fi
-    pwdman_get_input_password "Entry password (press enter for generating a random one):"
+    pwdman_get_input_password "Entry password [random]:"
     if [[ "$PASSWORD" == "" ]]; then
-        pwdman_get_random_password
+        pwdman_get_input "Random password length [128]:"
+        if [[ -z "$INPUT" ]]; then
+            length=128
+        else
+            length="$INPUT"
+        fi
+        pwdman_get_random_password "$length"
     fi
     PASSWORD=$(printf "%s" "$PASSWORD" | base64 -w 0)
     if [[ "$data" != "" ]]; then
@@ -180,9 +179,15 @@ function pwdman_update_password() {
         fi
         data=$(printf "%s" "$data" | sed "${line_number}d")
     done
-    pwdman_get_input_password "New password (press enter for generating a new one):"
+    pwdman_get_input_password "New password [random]:"
     if [[ "$PASSWORD" == "" ]]; then
-        pwdman_get_random_password
+        pwdman_get_input "Random password length [128]:"
+        if [[ -z "$INPUT" ]]; then
+            length=128
+        else
+            length="$INPUT"
+        fi
+        pwdman_get_random_password "$length"
     fi
     PASSWORD=$(printf "%s" "$PASSWORD" | base64 -w 0)
     if [[ "$data" != "" ]]; then
@@ -265,7 +270,7 @@ function pwdman_list() {
 #
 function pwdman_ask_continue() {
     # TODO: default Y/N
-    pwdman_get_input "Continue? [y/N]"
+    pwdman_get_input "Continue [y/N]?"
     case "$INPUT" in
         [Yy])
             ;;
@@ -387,7 +392,7 @@ function pwdman_exit() {
 function pwdman_initialize() {
     pwdman_version
     echo "Welcome! Set up pwdman."
-    pwdman_get_input "Database name (press enter for default database $DEFAULT_DATABASE):"
+    pwdman_get_input "Database name [$DEFAULT_DATABASE]:"
     if [[ -z "$INPUT" ]]; then
         database="$DEFAULT_DATABASE"
     else
