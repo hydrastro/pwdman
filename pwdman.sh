@@ -74,7 +74,7 @@ function pwdman_write_password() {
     count=$(pwdman_count_entries "$username" "$BUFFER")
     if ! pwdman_check_reverse_entries "$username" "$BUFFER" || [[ $count -gt 0 ]]; then
         echo "Warning: there's already a matching entry in the database."
-        pwdman_ask_continue
+        pwdman_ask_continue 0
     fi
     pwdman_get_input_password "Entry password [random]: "
     if [[ "$PASSWORD" == "" ]]; then
@@ -212,7 +212,7 @@ function pwdman_update_password() {
     fi
     if [[ $count -gt 1 ]]; then
         echo "Warning: multiple entries matching in the database."
-        pwdman_ask_continue
+        pwdman_ask_continue 0
     fi
     while :
     do
@@ -268,7 +268,7 @@ function pwdman_delete_password() {
     fi
     if [[ $count -gt 1 ]]; then
         echo "Warning: multiple entries matching in the database."
-        pwdman_ask_continue
+        pwdman_ask_continue 0
     fi
     while :
     do
@@ -346,14 +346,33 @@ function pwdman_backup_database() {
 #
 # Continue Prompt
 #
+# $1 [ Default Yes ]
+#
 function pwdman_ask_continue() {
     # TODO: default Y/N
-    pwdman_get_input "Continue [y/N]?"
+    if [[ $# -gt 1 ]]; then
+        yesno="$1"
+    else
+        yesno=0
+    fi
+    if [[ $yesno -eq 0 ]]; then
+        prompt="Continue [y/N]?"
+    elif [[ $yesno -eq 1 ]]; then
+        prompt="Continue [Y/n]?"
+    else
+        prompt="Continue [y/N]?"
+    fi
+    pwdman_get_input "$prompt"
     case "$INPUT" in
         [Yy])
             ;;
-        [Nn] | *)
+        [Nn])
             pwdman_exit "Aborting."
+            ;;
+        *)
+            if [[ $1 -eq 0 ]]; then
+                pwdman_exit "Aborting."
+            fi
             ;;
     esac
 }

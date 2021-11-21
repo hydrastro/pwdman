@@ -2,9 +2,9 @@
 Simple password manager written in bash.
 
 ## TODO
-- [ ] ask_continue function feature
 - [ ] Proper README.md
 - [ ] Optimization (there are a lot of unnecessary assignments)
+- [X] ask_continue function feature
 - [X] Interactive mode
 - [X] Backup function(s)
 - [X] Clipboard copy
