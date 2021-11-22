@@ -2,9 +2,13 @@
 
 : "${DEFAULT_DATABASE:=pwdman.db}"
 : "${CLIPBOARD_TIMEOUT:=30}"
+: "${DEFAULT_LENGTH:=128}"
+: "${DEFAULT_ALPHABET:=abcdefghijklmonpqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123\
+456789!@#$%^&*()-=_+\`~[]{\}|;\':\",./<>?}"
 
 SCRIPT_VERSION="0.4"
 BUFFER=""
+
 #
 # Encrypt Database
 #
@@ -15,15 +19,23 @@ BUFFER=""
 # $BUFFER
 #
 function pwdman_encrypt_database() {
+    local data gpg_options
     if [[ $# -lt 2 ]]; then
         pwdman_exit "Error: missing argument(s) for ${FUNCNAME[0]}"
     fi
-    database="$1"
-    password="$2"
-    data="$3"
-    data=$(printf "%s,%s" "Username" "Password")$'\n'$(printf "%s" "$data")
-    if ! result=$(printf "%s" "$data" | gpg --armor --batch --symmetric --yes --passphrase-fd 3 --no-symkey-cache --output "$database" 3< <(printf "%s" "$password")); then
-        pwdman_exit "Database encryption error."
+    data=$(printf "%s,%s" "Username" "Password")$'\n'$(printf "%s" "$3")
+    gpg_options=(
+        --armor
+        --batch
+        --symmetric
+        --yes
+        --passphrase-fd 3
+        --no-symkey-cache
+        --output
+    )
+    if ! printf "%s" "$data" | gpg "${gpg_options[@]}" "$1" 3< \
+    <(printf "%s" "$2"); then
+        pwdman_exit "Error: database encryption error."
     fi
 }
 
@@ -36,16 +48,23 @@ function pwdman_encrypt_database() {
 # $BUFFER
 #
 function pwdman_decrypt_database() {
+    local gpg_options result
     if [[ $# -lt 2 ]]; then
         pwdman_exit "Error: missing argument(s) for ${FUNCNAME[0]}"
     fi
-    database="$1"
-    if [[ ! -f "$database" ]]; then
+    if [[ ! -f "$1" ]]; then
         pwdman_exit "Error: database not found."
     fi
-    password="$2"
-    if ! result=$(printf "%s\\n" "$password" | gpg --armor --batch --no-symkey-cache --decrypt --passphrase-fd 0 "$database" 2>/dev/null); then
-        pwdman_exit "Database decryption error."
+    gpg_options=(
+        --armor
+        --batch
+        --no-symkey-cache
+        --decrypt
+        --passphrase-fd 0
+    )
+    if ! result=$(printf "%s\\n" "$2" | gpg "${gpg_options[@]}"         \
+    "$1" 2>/dev/null); then
+        pwdman_exit "Error: database decryption error."
     fi
     BUFFER=$(printf "%s" "$result" | tail -n +2)
 }
@@ -58,10 +77,10 @@ function pwdman_decrypt_database() {
 #
 #
 function pwdman_write_password() {
+    local database database_password count username
     if [[ $# -lt 1 ]]; then
         pwdman_exit "Error: missing argument(s) for ${FUNCNAME[0]}"
     fi
-    username="$1"
     if [[ $# -gt 1 ]]; then
         database="$2"
     else
@@ -70,29 +89,30 @@ function pwdman_write_password() {
     pwdman_get_input_password "Database password: "
     database_password="$PASSWORD"
     pwdman_decrypt_database "$database" "$database_password"
-    data=$(printf "%s" "$BUFFER")
-    count=$(pwdman_count_entries "$username" "$BUFFER")
-    if ! pwdman_check_reverse_entries "$username" "$BUFFER" || [[ $count -gt 0 ]]; then
+    count=$(pwdman_count_entries "$1" "$BUFFER")
+    if ! pwdman_check_reverse_entries "$1" "$BUFFER" ||                 \
+    [[ $count -gt 0 ]]; then
         echo "Warning: there's already a matching entry in the database."
         pwdman_ask_continue 0
     fi
     pwdman_get_input_password "Entry password [random]: "
     if [[ "$PASSWORD" == "" ]]; then
-        pwdman_get_input "Random password length [128]: "
+        pwdman_get_input "Random password length [$DEFAULT_LENGTH]: "
         if [[ -z "$INPUT" ]]; then
-            length=128
+            length="$DEFAULT_LENGTH"
         else
             length="$INPUT"
         fi
         pwdman_get_random_password "$length"
     fi
     PASSWORD=$(printf "%s" "$PASSWORD" | base64 -w 0)
-    if [[ "$data" != "" ]]; then
-        data+=$'\n'
+    if [[ "$BUFFER" != "" ]]; then
+        BUFFER+=$'\n'
     fi
-    username=$(printf "%s" "$username" | base64 -w 0)
-    data+=$(printf "%s,%s" "$username" "$PASSWORD")
-    pwdman_encrypt_database "$database" "$database_password" "$data"
+    username=$(printf "%s" "$1" | base64 -w 0)
+    BUFFER+=$(printf "%s,%s" "$username" "$PASSWORD")
+    pwdman_encrypt_database "$database" "$database_password" "$BUFFER"
+    echo "Password successfully written."
 }
 
 #
@@ -102,17 +122,17 @@ function pwdman_write_password() {
 # $2 Database Buffer
 #
 function pwdman_check_reverse_entries() {
+    local database_buffer IFS decoded_line line
     if [[ $# -lt 2 ]]; then
         pwdman_exit "Error: missing argument(s) for ${FUNCNAME[0]}"
     fi
-    decoded_username="$1"
     database_buffer=$(printf "%s" "$2" | cut -d "," -f1)
     if [[ "$database_buffer" == "" ]]; then
         return 0
     fi
     while IFS= read -r line; do
         decoded_line=$(printf "%s" "$line" | base64 --decode)
-        if printf "%s" "$decoded_username" | grep -q "$decoded_line"; then
+        if printf "%s" "$1" | grep -q "$decoded_line"; then
             return 1
         fi
     done <<< "$database_buffer"
@@ -126,16 +146,16 @@ function pwdman_check_reverse_entries() {
 # $2 Database Buffer
 #
 function pwdman_count_entries() {
+    local database_buffer decoded_database IFS line
     if [[ $# -lt 2 ]]; then
         pwdman_exit "Error: missing argument(s) for ${FUNCNAME[0]}"
     fi
-    decoded_username="$1"
     database_buffer=$(printf "%s" "$2" | cut -d "," -f1)
     decoded_database=""
     while IFS= read -r line; do
         decoded_database=$(printf "%s" "$line" | base64 --decode)$'\n'
     done <<< "$database_buffer"
-    printf "%s" "$decoded_database" | grep -c "$decoded_username"
+    printf "%s" "$decoded_database" | grep -c "$1"
 }
 
 #
@@ -145,10 +165,10 @@ function pwdman_count_entries() {
 # $2 [ Database ]
 #
 function pwdman_read_password() {
+    local username database_password IFS result count first_result timeout
     if [[ $# -lt 1 ]]; then
         pwdman_exit "Error: missing argument(s) for ${FUNCNAME[0]}"
     fi
-    username="$1"
     if [[ $# -gt 1 ]]; then
         database="$2"
     else
@@ -163,8 +183,8 @@ function pwdman_read_password() {
     while IFS= read -r line; do
         decoded_usernames+=$(printf "%s" "$line" | base64 --decode)$'\n'
     done <<< "$encoded_usernames"
-    result=$(printf "%s" "$decoded_usernames" | grep -n "$username")
-    count=$(printf "%s" "$decoded_usernames" | grep -c "$username")
+    result=$(printf "%s" "$decoded_usernames" | grep -n "$1")
+    count=$(printf "%s" "$decoded_usernames" | grep -c "$1")
     if [[ $count -eq 0 ]]; then
         pwdman_exit "Error: username not found in the database."
     fi
@@ -172,13 +192,15 @@ function pwdman_read_password() {
         echo "Warning: multiple entries matching in the database."
     fi
     first_result=$(printf "%s" "$result" | cut -d ":" -f1 | sed -n 1p)
-    password=$(printf "%s" "$BUFFER" | cut -d "," -f2 | sed -n "$first_result"p | base64 --decode)
-    username=$(printf "%s" "$username" | base64 -w 0)
+    password=$(printf "%s" "$BUFFER" | cut -d "," -f2 |                        \
+    sed -n "$first_result"p | base64 --decode)
+    username=$(printf "%s" "$1" | base64 -w 0)
     printf "%s" "$password" | xclip
     timeout="$CLIPBOARD_TIMEOUT"
     shift
     while [[ $timeout -gt 0 ]]; do
-        printf "\\rPassword on clipboard! Clearing clipboard in %.d" $((timeout--))
+        printf "\\rPassword on clipboard! Clearing clipboard in %.d"           \
+        $((timeout--))
         sleep 1
     done
     printf "%s" "" | xclip
@@ -216,7 +238,8 @@ function pwdman_update_password() {
     fi
     while :
     do
-        line_number=$(printf "%s" "$data" | cut -d "," -f1 | grep -n "$username" | cut -d ":" -f1 | head -n 1)
+        line_number=$(printf "%s" "$data" | cut -d "," -f1 |                   \
+        grep -n "$username" | cut -d ":" -f1 | head -n 1)
         if [[ "$line_number" == "" ]]; then
             break;
         fi
@@ -272,7 +295,8 @@ function pwdman_delete_password() {
     fi
     while :
     do
-        line_number=$(printf "%s" "$data" | cut -d "," -f1 | grep -n "$username" | cut -d ":" -f1 | head -n 1)
+        line_number=$(printf "%s" "$data" | cut -d "," -f1 |                   \
+        grep -n "$username" | cut -d ":" -f1 | head -n 1)
         if [[ "$line_number" == "" ]]; then
             break;
         fi
@@ -403,12 +427,15 @@ function pwdman_ask_continue() {
 # $2 [ Alphabet ]
 #
 function pwdman_get_random_password() {
-    length="${1:-128}"
+    if [[ $# -gt 1 ]]; then
+        length="$1"
+    else
+        length="$DEFAULT_LENGTH"
+    fi
     if [[ $# -gt 1 ]]; then
         alphabet="$2"
     else
-        # Removed comma
-        alphabet='abcdefghijklmonpqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*()-=_+`~[]\{}|;'\'':",./<>?'
+        alphabet="$DEFAULT_ALPHABET"
     fi
     PASSWORD=""
     for _ in $(seq 1 "$length"); do
@@ -509,7 +536,7 @@ function pwdman_interactive() {
             pwdman_reencrypt_database "$database"
             ;;
         *)
-            pwdman_exit "Invalid option. Press h for help."
+            pwdman_exit "Error: invalid option. Press h for help."
     esac
     exit 0
 }
@@ -550,7 +577,7 @@ EOF
 #
 function pwdman_exit() {
     if [[ $# -eq 0 ]]; then
-        echo "An error occured."
+        echo "Error: undefined error."
     else
         echo "$1"
     fi
