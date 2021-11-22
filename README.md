@@ -61,9 +61,9 @@ The database is just an encrpyted csv file with two columns: `Username` and
 It has a header with the column names and also its values are encoded in base64.
 
 ## TODO
-- [ ] Change database password
 - [ ] Optimization (there are a lot of unnecessary assignments)
-- [ ] Allow "," in passwords
+- [X] Allow "," in passwords
+- [X] Change database password
 - [X] Proper README.md
 - [X] ask_continue function feature
 - [X] Interactive mode

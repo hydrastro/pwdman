@@ -300,15 +300,15 @@ function pwdman_list() {
     if [[ "$data" == "" ]]; then
         pwdman_exit "Database is empty."
     fi
-    decoded_data="Username,Password"$'\n'
+    decoded_data="Username Password"$'\n'
     printf "Database entries:\\n"
     while IFS= read -r line; do
         username=$(printf "%s" "$line" | cut -d "," -f1 | base64 --decode)
         password=$(printf "%s" "$line" | cut -d "," -f2 | base64 --decode)
-        decoded_data+=$(printf "%s,%s" "$username" "$password")
+        decoded_data+=$(printf "%s %s" "$username" "$password")
         decoded_data+=$'\n'
     done <<< "$data"
-    printf "%s" "$decoded_data" | column -t -s ","
+    printf "%s" "$decoded_data" | column -t -s " "
 }
 
 #
@@ -341,6 +341,25 @@ function pwdman_backup_database() {
     printf "%s" "$decoded_data" > "$1"
     echo "Database successfully exported."
     echo "Note: be aware that the export is in plaintext!"
+}
+
+#
+# Reencrypt Database
+#
+# $1 [ Database ]
+#
+function pwdman_reencrypt_database() {
+   if [[ $# -gt 0 ]]; then
+        database="$1"
+    else
+        database="$DEFAULT_DATABASE"
+    fi
+    pwdman_get_input_password "Database password: "
+    database_password="$PASSWORD"
+    pwdman_decrypt_database "$database" "$database_password"
+    pwdman_get_input_password "New database password: "
+    pwdman_encrypt_database "$database" "$PASSWORD" "$BUFFER"
+    echo "Database successfully reencrypted."
 }
 
 #
@@ -389,7 +408,7 @@ function pwdman_get_random_password() {
         alphabet="$2"
     else
         # Removed comma
-        alphabet='abcdefghijklmonpqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*()-=_+`~[]\{}|;'\'':"./<>?'
+        alphabet='abcdefghijklmonpqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*()-=_+`~[]\{}|;'\'':",./<>?'
     fi
     PASSWORD=""
     for _ in $(seq 1 "$length"); do
@@ -486,6 +505,9 @@ function pwdman_interactive() {
             pwdman_get_input "Backup filename: "
             pwdman_backup_database "$INPUT" "$database"
             ;;
+        "x")
+            pwdman_reencrypt_database "$database"
+            ;;
         *)
             pwdman_exit "Invalid option. Press h for help."
     esac
@@ -508,15 +530,16 @@ function pwdman_help(){
 usage: ./pwdman [options]
 
 Options:
-  -h | (--)help           Displays this information.
-  -v | (--)version        Displays the script version.
-  -i | (--)interactive    Runs the script in interactive mode.
-  -r | (--)read <arg>     Reads a password from the database.
-  -w | (--)write <arg>    Writes a new password in the database.
-  -u | (--)update <arg>   Updates a password in the database.
-  -d | (--)delete <arg>   Deletes a password from the database.
-  -l | (--)list <arg>     Lists all passwords saved in the database.
-  -b | (--)backup <arg>   Makes a backup dump of the database.
+  -h | (--)help             Displays this information.
+  -v | (--)version          Displays the script version.
+  -i | (--)interactive      Runs the script in interactive mode.
+  -r | (--)read <arg>       Reads a password from a database.
+  -w | (--)write <arg>      Writes a new password in a database.
+  -u | (--)update <arg>     Updates a password in a database.
+  -d | (--)delete <arg>     Deletes a password from a database.
+  -l | (--)list <arg>       Lists all passwords saved in a database.
+  -b | (--)backup <arg>     Makes a backup dump of a database.
+  -x | (--)reencrypt <arg>  Changes the password of a database.
 EOF
 }
 
@@ -591,6 +614,9 @@ function pwdman_main() {
             ;;
         "-b" | "--backup" | "backup")
             pwdman_backup_database "${@:2}"
+            ;;
+        "-x" | "--reencrypt" | "reencrypt")
+            pwdman_reencrypt_database "${@:2}"
             ;;
         *)
             echo "Invalid argument(s). Type --help for help."
