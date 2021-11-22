@@ -1,8 +1,8 @@
 # Password Manager
 Simple password manager written in bash.  
-Inspired by https://github.com/drduh/pwd.sh
-It uses `gpg` for encrypting a csv single database on the fly.  
-And copies retrieved passwords to the clipboard with `xclip`.
+Inspired by https://github.com/drduh/pwd.sh  
+It uses GnuPG for symmetrically encrypting a csv database on the fly and copies
+retrieved passwords to the clipboard with `xclip`.
 
 ## Dependencies
 This cripts has the following dependencies:
@@ -27,32 +27,14 @@ interactive mode:
 ```shell
 alias pw=/opt/password_manager/pwdman.sh -i
 ```
-
-There are some configs hardcoded in the code you might want to change: the
-default database location and the clipboard clearing timeout or the alphabet
-user for random password generation.
-
+There are some hardcoded configs you might want to change: the default database
+location, the clipboard clearing timeout and the alphabet user for random
+password generation.
 
 ## Usage
-The script usage is pretty straightforward, as explained in
-the help section:
-```
-Password Manager version 0.4
-usage: ./pwdman [options]
-
-Options:
-  -h | (--)help           Displays this information.
-  -v | (--)version        Displays the script version.
-  -i | (--)interactive    Runs the script in interactive mode.
-  -r | (--)read <arg>     Reads a password from the database.
-  -w | (--)write <arg>    Writes a new password in the database.
-  -u | (--)update <arg>   Updates a password in the database.
-  -d | (--)delete <arg>   Deletes a password from the database.
-  -l | (--)list <arg>     Lists all passwords saved in the database.
-  -b | (--)backup <arg>   Makes a backup dump of the database.
-```
-Further examples
-For running script normally:
+The script usage is pretty straightforward: you can either run the script
+normally, specifying your parameters (usually the username on and optionally
+the database you're working on) in the command call:
 ```shell
 ./pwdman.sh -r username [database]
 ./pwdman.sh -w username [database]
@@ -61,10 +43,12 @@ For running script normally:
 ./pwdman.sh -l list [database]
 ./pwdman.sh -b backup file_name [database]
 ```
-For running the script interactively:
+Or you can run the script interactively with the `i` flag:
 ```shell
 ./pwdman.sh -i
 ```
+Now you have to press a flag key to perform an action and the script will
+guide and eventually ask for inputs.
 
 ## Contributing
 Feel free to contribute, pull requests are always welcome.  
@@ -77,6 +61,7 @@ The database is just an encrpyted csv file with two columns: `Username` and
 It has a header with the column names and also its values are encoded in base64.
 
 ## TODO
+- [ ] Change database password
 - [ ] Optimization (there are a lot of unnecessary assignments)
 - [ ] Allow "," in passwords
 - [X] Proper README.md
