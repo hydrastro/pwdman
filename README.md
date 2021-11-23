@@ -53,7 +53,6 @@ guide and eventually ask for inputs.
 ## Contributing
 Feel free to contribute, pull requests are always welcome.  
 Please reveiw and clean your code with `shellcheck` before pushing it.  
-If you want to help, Here below is a todo list.
 
 ### Database Structure
 The database is just an encrpyted csv file with two columns: `Username` and
