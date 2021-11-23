@@ -59,20 +59,3 @@ If you want to help, Here below is a todo list.
 The database is just an encrpyted csv file with two columns: `Username` and
 `Password`.  
 It has a header with the column names and also its values are encoded in base64.
-
-## TODO
-- [ ] Optimization (there are a lot of unnecessary assignments)
-- [X] Allow "," in passwords
-- [X] Change database password
-- [X] Proper README.md
-- [X] ask_continue function feature
-- [X] Interactive mode
-- [X] Backup function(s)
-- [X] Clipboard copy
-- [X] Better list output
-- [X] Better check for usernames on function password write
-- [X] Code cleanup with shellcheck
-- [X] Setup CI workflow
-- [X] Check update function
-- [X] Random functions
-- [X] LICENSE file
