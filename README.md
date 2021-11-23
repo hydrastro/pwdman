@@ -25,7 +25,10 @@ the script.
 A bash alias is conveniente because you can directly invoke the script in
 interactive mode:
 ```shell
-alias pw=/opt/password_manager/pwdman.sh -i
+alias pw='/opt/pwdman/pwdman.sh -i'
+# Or you can also set these aliases:
+alias pwr='/opt/pwdman/pwdman.sh -r'
+alias pww='/opt/pwdman/pwdman.sh -w'
 ```
 There are some hardcoded configs you might want to change: the default database
 location, the clipboard clearing timeout and the alphabet user for random
@@ -40,8 +43,9 @@ the database you're working on) in the command call:
 ./pwdman.sh -w username [database]
 ./pwdman.sh -u username [database]
 ./pwdman.sh -d username [database]
-./pwdman.sh -l list [database]
+./pwdman.sh -l [database]
 ./pwdman.sh -b backup file_name [database]
+./pwdman.sh -x [database]
 ```
 Or you can run the script interactively with the `i` flag:
 ```shell
