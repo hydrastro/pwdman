@@ -33,7 +33,7 @@ function pwdman_encrypt_database() {
         --no-symkey-cache
         --output
     )
-    if ! printf "%s" "$data" | gpg "${gpg_options[@]}" "$1" 3< \
+    if ! printf "%s" "$data" | gpg "${gpg_options[@]}" "$1" 3<                 \
     <(printf "%s" "$2"); then
         pwdman_exit "Error: database encryption error."
     fi
@@ -62,7 +62,7 @@ function pwdman_decrypt_database() {
         --decrypt
         --passphrase-fd 0
     )
-    if ! result=$(printf "%s\\n" "$2" | gpg "${gpg_options[@]}"         \
+    if ! result=$(printf "%s\\n" "$2" | gpg "${gpg_options[@]}"                \
     "$1" 2>/dev/null); then
         pwdman_exit "Error: database decryption error."
     fi
@@ -89,7 +89,7 @@ function pwdman_write_password() {
     pwdman_get_input_password "Database password: "
     database_password="$PASSWORD"
     pwdman_decrypt_database "$database" "$database_password"
-    if ! pwdman_check_reverse_entries "$1" "$BUFFER" ||                 \
+    if ! pwdman_check_reverse_entries "$1" "$BUFFER" ||                        \
     [[ $(pwdman_count_entries "$1" "$BUFFER") -gt 0 ]]; then
         echo "Warning: there's already a matching entry in the database."
         pwdman_ask_continue 0
