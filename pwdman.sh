@@ -442,6 +442,9 @@ function pwdman_import_backup() {
     if [[ ! -f "$backup_file" ]]; then
         pwdman_exit "Error: backup file not found."
     fi
+    if [[ "$(head -n 1 "$backup_file")" != "Username,Password" ]]; then
+        pwdman_exit "Error: invalid backup file, be more careful."
+    fi
     pwdman_get_input_password "Database password: "
     pwdman_decrypt_database "$database" "$PASSWORD"
     decoded_usernames=()
