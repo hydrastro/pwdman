@@ -6,7 +6,7 @@
 : "${DEFAULT_ALPHABET:=abcdefghijklmonpqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123\
 456789!@#$%^&*()-=_+\`~[]{\}|;\':\",./<>?}"
 
-SCRIPT_VERSION="0.4"
+SCRIPT_VERSION="0.5"
 BUFFER=""
 
 #
@@ -130,7 +130,7 @@ function pwdman_check_reverse_entries() {
     if [[ $# -lt 2 ]]; then
         pwdman_exit "Error: missing argument(s) for ${FUNCNAME[0]}"
     fi
-    database_buffer=$(printf "%s" "$2" | cut -d "," -f1)
+    database_buffer=$(printf "%s" "$2" | cut -d "," -f 1)
     if [[ "$database_buffer" == "" ]]; then
         return 0
     fi
@@ -154,10 +154,10 @@ function pwdman_count_entries() {
     if [[ $# -lt 2 ]]; then
         pwdman_exit "Error: missing argument(s) for ${FUNCNAME[0]}"
     fi
-    database_buffer=$(printf "%s" "$2" | cut -d "," -f1)
+    database_buffer=$(printf "%s" "$2" | cut -d "," -f 1)
     decoded_database=""
     while IFS= read -r line; do
-        decoded_database=$(printf "%s" "$line" | base64 --decode)$'\n'
+        decoded_database+=$(printf "%s" "$line" | base64 --decode)$'\n'
     done <<< "$database_buffer"
     printf "%s" "$decoded_database" | grep -c "$1"
 }
@@ -178,7 +178,7 @@ function pwdman_read_password() {
     pwdman_get_input_password "Database password: "
     database_password="$PASSWORD"
     pwdman_decrypt_database "$database" "$database_password"
-    encoded_usernames=$(printf "%s" "$BUFFER" | cut -d "," -f1)
+    encoded_usernames=$(printf "%s" "$BUFFER" | cut -d "," -f 1)
     decoded_usernames=""
     while IFS= read -r line; do
         decoded_usernames+=$(printf "%s" "$line" | base64 --decode)$'\n'
@@ -195,9 +195,9 @@ function pwdman_read_password() {
     elif [[ $count -gt 1 ]]; then
         echo "Warning: multiple entries matching in the database."
     fi
-    password=$(printf "%s" "$BUFFER" | cut -d "," -f2 |                        \
+    password=$(printf "%s" "$BUFFER" | cut -d "," -f 2 |                       \
     sed -n "$(printf "%s" "$(printf "%s" "$decoded_usernames" |                \
-    grep -n "$username")" | cut -d ":" -f1 | sed -n 1p)"p | base64 --decode)
+    grep -n "$username")" | cut -d ":" -f 1 | sed -n 1p)"p | base64 --decode)
     printf "%s" "$password" | xclip
     timeout="$CLIPBOARD_TIMEOUT"
     shift
@@ -242,8 +242,8 @@ function pwdman_update_password() {
     username=$(printf "%s" "$username" | base64 -w 0)
     while :
     do
-        line_number=$(printf "%s" "$BUFFER" | cut -d "," -f1 |                 \
-        grep -n "$username" | cut -d ":" -f1 | head -n 1)
+        line_number=$(printf "%s" "$BUFFER" | cut -d "," -f 1 |                \
+        grep -n "$username" | cut -d ":" -f 1 | head -n 1)
         if [[ "$line_number" == "" ]]; then
             break;
         fi
@@ -290,8 +290,8 @@ function pwdman_delete_password() {
         pwdman_get_input "Username: "
         username="$INPUT"
     fi
-    username=$(printf "%s" "$username" | base64 -w 0)
     count=$(pwdman_count_entries "$username" "$BUFFER")
+    username=$(printf "%s" "$username" | base64 -w 0)
     if [[ $count -eq 0 ]]; then
         pwdman_exit "Error: username not found in the database."
     elif [[ $count -gt 1 ]]; then
@@ -300,8 +300,8 @@ function pwdman_delete_password() {
     fi
     while :
     do
-        line_number=$(printf "%s" "$BUFFER" | cut -d "," -f1 |                 \
-        grep -n "$username" | cut -d ":" -f1 | head -n 1)
+        line_number=$(printf "%s" "$BUFFER" | cut -d "," -f 1 |                \
+        grep -n "$username" | cut -d ":" -f 1 | head -n 1)
         if [[ "$line_number" == "" ]]; then
             break;
         fi
@@ -332,8 +332,8 @@ function pwdman_list() {
     decoded_data="Username Password"$'\n'
     printf "Database entries:\\n"
     while IFS= read -r line; do
-        username=$(printf "%s" "$line" | cut -d "," -f1 | base64 --decode)
-        password=$(printf "%s" "$line" | cut -d "," -f2 | base64 --decode)
+        username=$(printf "%s" "$line" | cut -d "," -f 1 | base64 --decode)
+        password=$(printf "%s" "$line" | cut -d "," -f 2 | base64 --decode)
         decoded_data+="$username $password"$'\n'
     done <<< "$BUFFER"
     printf "%s" "$decoded_data" | column -t -s " "
@@ -347,15 +347,14 @@ function pwdman_list() {
 # $2 [ Filename ]
 #
 function pwdman_backup_database() {
-    local database database_password username password decoded_data
+    local database username password decoded_data
     if [[ $# -gt 0 && -n "$1" ]]; then
         database="$1"
     else
         database="$DEFAULT_DATABASE"
     fi
     pwdman_get_input_password "Database password: "
-    database_password="$PASSWORD"
-    pwdman_decrypt_database "$database" "$database_password"
+    pwdman_decrypt_database "$database" "$PASSWORD"
     if [[ "$BUFFER" == "" ]]; then
         pwdman_exit "Database is empty."
     fi
@@ -367,13 +366,13 @@ function pwdman_backup_database() {
     fi
     decoded_data="Username,Password"$'\n'
     while IFS= read -r line; do
-        username=$(printf "%s" "$line" | cut -d "," -f1 | base64 --decode)
-        password=$(printf "%s" "$line" | cut -d "," -f2 | base64 --decode)
+        username=$(printf "%s" "$line" | cut -d "," -f 1)
+        password=$(printf "%s" "$line" | cut -d "," -f 2)
         decoded_data+="$username,$password"$'\n'
     done <<< "$BUFFER"
     printf "%s" "$decoded_data" > "$backup_file"
     echo "Database successfully exported."
-    echo "Note: be aware that the export is in plaintext!"
+    echo "Note: be aware that the export is NOT encrypted!"
 }
 
 #
@@ -412,9 +411,143 @@ function pwdman_create_database() {
             database="$INPUT"
         fi
     fi
+    if [[ -f "$database" ]]; then
+        echo "Warning: database already exists, do you want to overwrite it?"
+        pwdman_ask_continue 0
+    fi
     pwdman_get_input_password "New database password: "
     pwdman_encrypt_database "$database" "$PASSWORD"
     echo "Database successfully created."
+}
+
+#
+# Import Backup
+#
+# $1 [ Database ]
+# $2 [ Backup filename]
+#
+function pwdman_import_backup() {
+    local database database_password decoded_usernames decoded_backup_usernames
+    if [[ $# -gt 0 && -n "$1" ]]; then
+        database="$1"
+    else
+        database="$DEFAULT_DATABASE"
+    fi
+    if [[ $# -gt 1 && -n "$2" ]]; then
+        backup_file="$2"
+    else
+        pwdman_get_input "Backup filename: "
+        backup_file="$INPUT"
+    fi
+    if [[ ! -f "$backup_file" ]]; then
+        pwdman_exit "Error: backup file not found."
+    fi
+    pwdman_get_input_password "Database password: "
+    pwdman_decrypt_database "$database" "$PASSWORD"
+    decoded_usernames=()
+    while IFS= read -r line; do
+        decoded_usernames+=("$(printf "%s" "$line" | base64 --decode)")
+    done <<< "$(printf "%s" "$BUFFER" | cut -d "," -f 1)"
+    decoded_backup_usernames=()
+    while IFS= read -r line; do
+        decoded_backup_usernames+=("$(printf "%s" "$line" | base64 --decode)")
+    done <<< "$(printf "%s" "$(tail -n +2 "$backup_file"| cut -d "," -f 1)")"
+    if [[ "${#decoded_usernames[@]}" -ne 0 &&                                  \
+    "${#decoded_backup_usernames[@]}" -ne 0 ]]; then
+        pwdman_check_merge_conflicts "${decoded_usernames[@]}"                 \
+        "${decoded_backup_usernames[@]}"
+    fi
+    if [[ "$BUFFER" != "" ]]; then
+        BUFFER+=$'\n'
+    fi
+    while IFS= read -r line; do
+        entry_username=$(printf "%s" "$line" | cut -d "," -f 1)
+        entry_password=$(printf "%s" "$line" | cut -d "," -f 2)
+        BUFFER+="$entry_username,$entry_password"$'\n'
+    done <<< "$(tail -n +2 "$backup_file")"
+    pwdman_encrypt_database "$database" "$PASSWORD" "$BUFFER"
+    echo "Database successfully imported."
+}
+
+#
+# Import Database
+#
+# $1 [ Database ]
+# $2 [ Import Database ]
+#
+function pwdman_import_database() {
+    local database database_password decoded_usernames decoded_import_usernames\
+    database_buffer
+    if [[ $# -gt 0 && -n "$1" ]]; then
+        database="$1"
+    else
+        database="$DEFAULT_DATABASE"
+    fi
+    if [[ $# -gt 1 && -n "$2" ]]; then
+        import_database="$2"
+    else
+        pwdman_get_input "Import database filename: "
+        import_database="$INPUT"
+    fi
+    if [[ ! -f "$import_database" ]]; then
+        pwdman_exit "Error: import database not found."
+    fi
+    pwdman_get_input_password "Current database password: "
+    pwdman_decrypt_database "$database" "$PASSWORD"
+    database_password="$PASSWORD"
+    decoded_usernames=()
+    database_buffer="$BUFFER"
+    while IFS= read -r line; do
+        decoded_usernames+=("$(printf "%s" "$line" | base64 --decode)")
+    done <<< "$(printf "%s" "$BUFFER" | cut -d "," -f 1)"
+    pwdman_get_input_password "Import database password: "
+    pwdman_decrypt_database "$import_database" "$PASSWORD"
+    decoded_import_usernames=()
+    while IFS= read -r line; do
+        decoded_import_usernames+=("$(printf "%s" "$line" | base64 --decode)")
+    done <<< "$(printf "%s" "$BUFFER" | cut -d "," -f 1)"
+    if [[ "${#decoded_usernames[@]}" -ne 0 &&                                  \
+    "${#decoded_import_usernames[@]}" -ne 0 ]]; then
+        pwdman_check_merge_conflicts "${decoded_usernames[@]}"                 \
+        "${decoded_import_usernames[@]}"
+    fi
+    if [[ "$database_buffer" != "" ]]; then
+        database_buffer+=$'\n'
+    fi
+    database_buffer+="$BUFFER"
+    pwdman_encrypt_database "$database" "$database_password" "$database_buffer"
+}
+
+#
+# Check Merge Conflicts
+#
+# $1 Current Username List
+# $2 Importing Username List
+#
+function pwdman_check_merge_conflicts() {
+    local ask
+    ask=0
+    current_list="$1"
+    importing_list="$2"
+    for username in "${importing_list[@]}"; do
+        if printf "%s\n" "${current_list[@]}" | grep -q "$username"; then
+            echo "Warning: import database has an entry matching in the "      \
+            "current database."
+            ask=1
+            break
+        fi
+    done
+    for username in "${current_list[@]}"; do
+        if printf "%s\n" "${importing_list[@]}" | grep  -q "$username"; then
+            echo "Warning: current database has an entry matching the import " \
+            "database."
+            ask=1
+            break
+        fi
+    done
+    if [[ $ask == 1 ]]; then
+        pwdman_ask_continue 0
+    fi
 }
 
 #
@@ -567,6 +700,12 @@ function pwdman_interactive() {
         "c")
             pwdman_create_database "$database"
             ;;
+        "m")
+            pwdman_import_backup "$database"
+            ;;
+        "n")
+            pwmdan_import_database "$database"
+            ;;
         *)
             pwdman_exit "Error: invalid option. Press h for help."
     esac
@@ -589,17 +728,19 @@ function pwdman_help(){
 usage: ./pwdman [options]
 
 Options:
-  -h | (--)help             Displays this information.
-  -v | (--)version          Displays the script version.
-  -i | (--)interactive      Runs the script in interactive mode.
-  -r | (--)read <arg>       Reads a password from a database.
-  -w | (--)write <arg>      Writes a new password in a database.
-  -u | (--)update <arg>     Updates a password in a database.
-  -d | (--)delete <arg>     Deletes a password from a database.
-  -l | (--)list <arg>       Lists all passwords saved in a database.
-  -b | (--)backup <arg>     Makes a backup dump of a database.
-  -x | (--)reencrypt <arg>  Changes the password of a database.
-  -c | (--)create <arg>     Creates a new database.
+  -h | (--)help               Displays this information.
+  -v | (--)version            Displays the script version.
+  -i | (--)interactive        Runs the script in interactive mode.
+  -r | (--)read <arg>         Reads a password from a database.
+  -w | (--)write <arg>        Writes a new password in a database.
+  -u | (--)update <arg>       Updates a password in a database.
+  -d | (--)delete <arg>       Deletes a password from a database.
+  -l | (--)list <arg>         Lists all passwords saved in a database.
+  -b | (--)backup <arg>       Makes a backup dump of a database.
+  -x | (--)reencrypt <arg>    Changes the password of a database.
+  -c | (--)create <arg>       Creates a new database.
+  -m | (--)import-back <arg>  Imports from an encoded backup.
+  -n | (--)import-enc <arg>   Imports from an encrypted database.
 EOF
 }
 
@@ -634,6 +775,9 @@ function pwdman_initialize() {
 function pwdman_main() {
     if [[ ! -f "$DEFAULT_DATABASE" ]]; then
         pwdman_initialize
+        if [[ $# -eq 0 ]]; then
+            exit 0
+        fi
     fi
     if [[ $# -eq 0 ]]; then
         pwdman_exit "Please supply at least one argument. Type --help for help."
@@ -671,6 +815,12 @@ function pwdman_main() {
             ;;
         "-c" | "--create" | "create")
             pwdman_create_database "${@:2}"
+            ;;
+        "-m" | "--import-plain" | "import-plain")
+            pwdman_import_backup "$3" "$2"
+            ;;
+        "-n" | "--import-enc" | "import-enc")
+            pwdman_import_database "$3" "$2"
             ;;
         *)
             echo "Invalid argument(s). Type --help for help."

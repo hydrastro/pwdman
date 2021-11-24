@@ -46,6 +46,9 @@ the database you're working on) in the command call:
 ./pwdman.sh -l [database]
 ./pwdman.sh -b backup file_name [database]
 ./pwdman.sh -x [database]
+./pwdman.sh -c [database]
+./pwdman.sh -m [backup] [database]
+./pwdman.sh -n [import_database] [database]
 ```
 Or you can run the script interactively with the `i` flag:
 ```shell
