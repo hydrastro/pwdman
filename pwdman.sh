@@ -530,7 +530,7 @@ function pwdman_check_merge_conflicts() {
     current_list="$1"
     importing_list="$2"
     for username in "${importing_list[@]}"; do
-        if printf "%s\n" "${current_list[@]}" | grep -q "$username"; then
+        if printf "%s\\n" "${current_list[@]}" | grep -q "$username"; then
             echo "Warning: import database has an entry matching in the "      \
             "current database."
             ask=1
@@ -538,7 +538,7 @@ function pwdman_check_merge_conflicts() {
         fi
     done
     for username in "${current_list[@]}"; do
-        if printf "%s\n" "${importing_list[@]}" | grep  -q "$username"; then
+        if printf "%s\\n" "${importing_list[@]}" | grep  -q "$username"; then
             echo "Warning: current database has an entry matching the import " \
             "database."
             ask=1
