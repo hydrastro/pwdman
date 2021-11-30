@@ -1,6 +1,6 @@
 #!/bin/bash
 
-: "${DEFAULT_DATABASE:=pwdman.db}"
+: "${DEFAULT_DATABASE:=~/pwdman.db}"
 : "${CLIPBOARD_TIMEOUT:=30}"
 : "${DEFAULT_LENGTH:=128}"
 : "${DEFAULT_ALPHABET:=abcdefghijklmonpqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123\
