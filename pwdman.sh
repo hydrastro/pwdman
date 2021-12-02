@@ -116,6 +116,7 @@ function pwdman_write_password() {
     username=$(printf "%s" "$username" | base64 -w 0)
     BUFFER+="$username,$PASSWORD"
     pwdman_encrypt_database "$database" "$database_password" "$BUFFER"
+    pwdman_copy_to_clipboard "$PASSWORD" "$CLIPBOARD_TIMEOUT"
     echo "Password successfully written."
 }
 
@@ -198,7 +199,28 @@ function pwdman_read_password() {
     password=$(printf "%s" "$BUFFER" | cut -d "," -f 2 |                       \
     sed -n "$(printf "%s" "$(printf "%s" "$decoded_usernames" |                \
     grep -n "$username")" | cut -d ":" -f 1 | sed -n 1p)"p | base64 --decode)
-    printf "%s" "$password" | xclip
+    pwdman_copy_to_clipboard "$password" "$CLIPBOARD_TIMEOUT"
+    echo "Password successfully read."
+}
+
+
+# Copy To Clipboard
+#
+# $1 String
+# $2 [ Timeout ]
+#
+function pwdman_copy_to_clipboard() {
+    local timeout
+    if [[ $# -lt 1 ]]; then
+        pwdman_exit "Error: missing argument(s) for ${FUNCNAME[0]}"
+    fi
+
+    if [[ $# -gt 1 && -n "$2" ]]; then
+        timeout="$1"
+    else
+        timeout="$CLIPBOARD_TIMEOUT"
+    fi
+    printf "%s" "$1" | xclip
     timeout="$CLIPBOARD_TIMEOUT"
     shift
     while [[ $timeout -gt 0 ]]; do
@@ -207,7 +229,6 @@ function pwdman_read_password() {
         sleep 1
     done
     printf "%s" "" | xclip
-    echo "Done."
 }
 
 #
