@@ -1,6 +1,6 @@
 #!/bin/bash
 
-: "${DEFAULT_DATABASE:=~/pwdman.db}"
+: "${DEFAULT_DATABASE:=$HOME/pwdman.db}"
 : "${CLIPBOARD_TIMEOUT:=30}"
 : "${DEFAULT_LENGTH:=128}"
 : "${DEFAULT_ALPHABET:=abcdefghijklmonpqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123\
@@ -34,6 +34,7 @@ function pwdman_encrypt_database() {
         --cipher-algo AES256
         --output "$1"
     )
+    echo "$1"
     if ! printf "%s" "$data" | gpg "${gpg_options[@]}" 3<                      \
     <(printf "%s" "$2"); then
         pwdman_exit "Error: database encryption error."
