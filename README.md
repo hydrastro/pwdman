@@ -5,7 +5,7 @@ It uses GnuPG for symmetrically encrypting a csv database on the fly and copies
 retrieved passwords to the clipboard with `xclip`.
 
 ## Dependencies
-This cripts has the following dependencies:
+This script has the following dependencies:
 - `gpg`
 - `xclip`
 
