@@ -34,7 +34,6 @@ function pwdman_encrypt_database() {
         --cipher-algo AES256
         --output "$1"
     )
-    echo "$1"
     if ! printf "%s" "$data" | gpg "${gpg_options[@]}" 3<                      \
     <(printf "%s" "$2"); then
         pwdman_exit "Error: database encryption error."
@@ -80,7 +79,7 @@ function pwdman_decrypt_database() {
 #
 #
 function pwdman_write_password() {
-    local database database_password username
+    local database database_password username plain_password
     if [[ $# -gt 0 && -n "$1" ]]; then
         database="$1"
     else
@@ -110,6 +109,7 @@ function pwdman_write_password() {
         fi
         pwdman_get_random_password "$length"
     fi
+    plain_password="$PASSWORD"
     PASSWORD=$(printf "%s" "$PASSWORD" | base64 -w 0)
     if [[ "$BUFFER" != "" ]]; then
         BUFFER+=$'\n'
@@ -117,7 +117,7 @@ function pwdman_write_password() {
     username=$(printf "%s" "$username" | base64 -w 0)
     BUFFER+="$username,$PASSWORD"
     pwdman_encrypt_database "$database" "$database_password" "$BUFFER"
-    pwdman_copy_to_clipboard "$PASSWORD" "$CLIPBOARD_TIMEOUT"
+    pwdman_copy_to_clipboard "$plain_password" "$CLIPBOARD_TIMEOUT"
     echo "Password successfully written."
 }
 
