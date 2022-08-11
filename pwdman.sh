@@ -1,5 +1,4 @@
 #!/bin/bash
-
 : "${DEFAULT_DATABASE:=$HOME/pwdman.db}"
 : "${CLIPBOARD_TIMEOUT:=7}"
 : "${DEFAULT_LENGTH:=128}"
@@ -229,6 +228,7 @@ function pwdman_copy_to_clipboard() {
         $((timeout--))
         sleep 1
     done
+    printf "%s" $'\n'"Clipboard cleared."$'\n'
     printf "%s" "" | xclip -selection clipboard
 }
 
@@ -385,6 +385,10 @@ function pwdman_backup_database() {
     else
         pwdman_get_input "Backup filename: "
         backup_file="$INPUT"
+        if [[ -f "$backup_file" ]]; then
+            echo "Warning: file already exists, do you want to overwrite it?"
+            pwdman_ask_continue 0
+        fi
     fi
     decoded_data="Username,Password"$'\n'
     while IFS= read -r line; do
@@ -434,7 +438,7 @@ function pwdman_create_database() {
         fi
     fi
     if [[ -f "$database" ]]; then
-        echo "Warning: database already exists, do you want to overwrite it?"
+        echo "Warning: file already exists, do you want to overwrite it?"
         pwdman_ask_continue 0
     fi
     pwdman_get_input_password "New database password: "
@@ -449,7 +453,7 @@ function pwdman_create_database() {
 # $2 [ Backup filename]
 #
 function pwdman_import_backup() {
-    local database database_password decoded_usernames decoded_backup_usernames
+    local database database_password
     if [[ $# -gt 0 && -n "$1" ]]; then
         database="$1"
     else
@@ -469,18 +473,17 @@ function pwdman_import_backup() {
     fi
     pwdman_get_input_password "Database password: "
     pwdman_decrypt_database "$database" "$PASSWORD"
-    decoded_usernames=()
+    FIRST_LIST=()
     while IFS= read -r line; do
-        decoded_usernames+=("$(printf "%s" "$line" | base64 --decode)")
+        FIRST_LIST+=("$(printf "%s" "$line" | base64 --decode)")
     done <<< "$(printf "%s" "$BUFFER" | cut -d "," -f 1)"
-    decoded_backup_usernames=()
+    SECOND_LIST=()
     while IFS= read -r line; do
-        decoded_backup_usernames+=("$(printf "%s" "$line" | base64 --decode)")
+        SECOND_LIST+=("$(printf "%s" "$line" | base64 --decode)")
     done <<< "$(printf "%s" "$(tail -n +2 "$backup_file"| cut -d "," -f 1)")"
-    if [[ "${#decoded_usernames[@]}" -ne 0 &&                                  \
-    "${#decoded_backup_usernames[@]}" -ne 0 ]]; then
-        pwdman_check_merge_conflicts "${decoded_usernames[@]}"                 \
-        "${decoded_backup_usernames[@]}"
+    if [[ "${#FIRST_LIST[@]}" -ne 0 &&                                  \
+    "${#SECOND_LIST[@]}" -ne 0 ]]; then
+        pwdman_check_merge_conflicts
     fi
     if [[ "$BUFFER" != "" ]]; then
         BUFFER+=$'\n'
@@ -501,8 +504,7 @@ function pwdman_import_backup() {
 # $2 [ Import Database ]
 #
 function pwdman_import_database() {
-    local database database_password decoded_usernames decoded_import_usernames\
-    database_buffer
+    local database database_password database_buffer
     if [[ $# -gt 0 && -n "$1" ]]; then
         database="$1"
     else
@@ -520,21 +522,20 @@ function pwdman_import_database() {
     pwdman_get_input_password "Current database password: "
     pwdman_decrypt_database "$database" "$PASSWORD"
     database_password="$PASSWORD"
-    decoded_usernames=()
+    FIRST_LIST=()
     database_buffer="$BUFFER"
     while IFS= read -r line; do
-        decoded_usernames+=("$(printf "%s" "$line" | base64 --decode)")
+        FIRST_LIST+=("$(printf "%s" "$line" | base64 --decode)")
     done <<< "$(printf "%s" "$BUFFER" | cut -d "," -f 1)"
     pwdman_get_input_password "Import database password: "
     pwdman_decrypt_database "$import_database" "$PASSWORD"
-    decoded_import_usernames=()
+    SECOND_LIST=()
     while IFS= read -r line; do
-        decoded_import_usernames+=("$(printf "%s" "$line" | base64 --decode)")
+        SECOND_LIST+=("$(printf "%s" "$line" | base64 --decode)")
     done <<< "$(printf "%s" "$BUFFER" | cut -d "," -f 1)"
-    if [[ "${#decoded_usernames[@]}" -ne 0 &&                                  \
-    "${#decoded_import_usernames[@]}" -ne 0 ]]; then
-        pwdman_check_merge_conflicts "${decoded_usernames[@]}"                 \
-        "${decoded_import_usernames[@]}"
+    if [[ "${#FIRST_LIST[@]}" -ne 0 &&                                  \
+    "${#SECOND_LIST[@]}" -ne 0 ]]; then
+        pwdman_check_merge_conflicts
     fi
     if [[ "$database_buffer" != "" ]]; then
         database_buffer+=$'\n'
@@ -546,24 +547,19 @@ function pwdman_import_database() {
 #
 # Check Merge Conflicts
 #
-# $1 Current Username List
-# $2 Importing Username List
-#
 function pwdman_check_merge_conflicts() {
     local ask
     ask=0
-    current_list="$1"
-    importing_list="$2"
-    for username in "${importing_list[@]}"; do
-        if printf "%s\\n" "${current_list[@]}" | grep -q "$username"; then
+    for username in "${SECOND_LIST[@]}"; do
+        if printf "%s\\n" "${FIRST_LIST[@]}" | grep -q "$username"; then
             echo "Warning: import database has an entry matching in the "      \
             "current database."
             ask=1
             break
         fi
     done
-    for username in "${current_list[@]}"; do
-        if printf "%s\\n" "${importing_list[@]}" | grep  -q "$username"; then
+    for username in "${FIRST_LIST[@]}"; do
+        if printf "%s\\n" "${SECOND_LIST[@]}" | grep  -q "$username"; then
             echo "Warning: current database has an entry matching the import " \
             "database."
             ask=1
@@ -723,13 +719,13 @@ function pwdman_interactive() {
             pwdman_reencrypt_database "$database"
             ;;
         "c")
-            pwdman_create_database "$database"
+            pwdman_create_database
             ;;
         "m")
             pwdman_import_backup "$database"
             ;;
         "n")
-            pwmdan_import_database "$database"
+            pwdman_import_database "$database"
             ;;
         *)
             pwdman_exit "Error: invalid option. Press h for help."
