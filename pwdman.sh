@@ -1,12 +1,12 @@
 #!/bin/bash
 
 : "${DEFAULT_DATABASE:=$HOME/pwdman.db}"
-: "${CLIPBOARD_TIMEOUT:=30}"
+: "${CLIPBOARD_TIMEOUT:=7}"
 : "${DEFAULT_LENGTH:=128}"
 : "${DEFAULT_ALPHABET:=abcdefghijklmonpqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123\
-456789!@#$%^&*()-=_+\`~[]{\}|;\':\",./<>?}"
+456789}"
 
-SCRIPT_VERSION="0.5"
+SCRIPT_VERSION="1.0"
 BUFFER=""
 
 #
@@ -221,7 +221,7 @@ function pwdman_copy_to_clipboard() {
     else
         timeout="$CLIPBOARD_TIMEOUT"
     fi
-    printf "%s" "$1" | xclip
+    printf "%s" "$1" | xclip -selection clipboard
     timeout="$CLIPBOARD_TIMEOUT"
     shift
     while [[ $timeout -gt 0 ]]; do
@@ -229,7 +229,7 @@ function pwdman_copy_to_clipboard() {
         $((timeout--))
         sleep 1
     done
-    printf "%s" "" | xclip
+    printf "%s" "" | xclip -selection clipboard
 }
 
 #
