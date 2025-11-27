@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 : "${DEFAULT_DATABASE:=$HOME/pwdman.db}"
 : "${CLIPBOARD_TIMEOUT:=7}"
 : "${DEFAULT_LENGTH:=128}"
