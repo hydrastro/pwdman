@@ -1,5 +1,5 @@
 {
-  description = "pwdman — a GPG-encrypted password and TOTP manager";
+  description = "pwdman — a GPG-encrypted password and one-time-code (TOTP/HOTP) manager";
 
   inputs.nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
 
@@ -20,33 +20,29 @@
 
         default = pkgs.stdenvNoCC.mkDerivation {
           pname   = "pwdman";
-          version = "1.2";
+          version = "2.0";
 
           src = ./.;
 
           # Runtime dependencies that must be on PATH when the script runs.
-          # Notes:
-          #   - coreutils  provides base64, od, mktemp, install, …
-          #   - util-linux provides flock  (Linux only; gracefully skipped on macOS)
-          #   - gnused     provides sed
-          #   - gawk       provides awk  (used in --import-plain old-format migration)
-          #   - python3    provides the urllib.parse URL-decoder in pwdman_urldecode
-          #   - xxd        is part of vim on nixpkgs; we use the standalone package
-          #   - xclip / wl-clipboard are optional — only one needs to be present;
-          #     on macOS pbcopy is already in the system, so neither is required.
+          #   - coreutils  base64 od mktemp sha1sum/sha256sum/sha512sum (the
+          #                one-time codes are computed with these, in bash)
+          #   - util-linux flock (Linux only; skipped gracefully on macOS)
+          #   - fzf        optional: pick entries when no name is given
+          #   - zbar       optional: zbarimg reads 2FA QR code images
+          #   - qrencode   optional: --otp-export shows a QR code
+          #   - xclip / wl-clipboard: only one is needed at runtime;
+          #     macOS has pbcopy built in.
           nativeBuildInputs = [ pkgs.makeWrapper ];
 
           runtimeDeps = with pkgs;
             [
               bash
-              coreutils   # base64 od mktemp install cat head tail tr
+              coreutils
               gnupg
-              openssl
-              bc
-              gnused
-              gawk
-              python3
-              xxd
+              fzf
+              zbar
+              qrencode
             ]
             # flock lives in util-linux, which doesn't exist on Darwin
             ++ pkgs.lib.optionals pkgs.stdenvNoCC.isLinux  [ pkgs.util-linux ]
@@ -70,7 +66,7 @@
           '';
 
           meta = {
-            description  = "A GPG-encrypted password and TOTP manager written in Bash";
+            description  = "A GPG-encrypted password and one-time-code manager written in Bash";
             license      = pkgs.lib.licenses.mit;
             mainProgram  = "pwdman";
             platforms    = pkgs.lib.platforms.unix;
